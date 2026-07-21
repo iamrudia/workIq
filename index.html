@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Microsoft Copilot Studio 정리</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" />
+  <link
+    href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css"
+    rel="stylesheet"
+  />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --primary: #0f6cbd;
+      --primary-light: #d0e8ff;
+      --primary-dark: #0a4a8f;
+      --accent: #6b3fa0;
+      --accent-light: #ede8f7;
+      --bg: #f5f8fc;
+      --card: #ffffff;
+      --text: #1a1a2e;
+      --text-muted: #5a6a7e;
+      --border: #dde6f0;
+      --success: #107c41;
+      --success-light: #d8f0e4;
+      --warning: #c55a11;
+      --warning-light: #fdebd0;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+    }
+
+    /* ── Hero ── */
+    .hero {
+      background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 50%, #2ea3f2 100%);
+      color: #fff;
+      padding: 80px 24px 60px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: -60px; right: -60px;
+      width: 320px; height: 320px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.06);
+    }
+    .hero::after {
+      content: '';
+      position: absolute;
+      bottom: -80px; left: -40px;
+      width: 240px; height: 240px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.05);
+    }
+    .hero-badge {
+      display: inline-block;
+      background: rgba(255,255,255,0.2);
+      border: 1px solid rgba(255,255,255,0.35);
+      color: #fff;
+      font-size: 0.78rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      padding: 5px 14px;
+      border-radius: 999px;
+      margin-bottom: 20px;
+      text-transform: uppercase;
+    }
+    .hero h1 {
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      font-weight: 800;
+      line-height: 1.25;
+      margin-bottom: 16px;
+    }
+    .hero h1 span { color: #a8d8ff; }
+    .hero p {
+      font-size: 1.05rem;
+      opacity: 0.88;
+      max-width: 600px;
+      margin: 0 auto 32px;
+    }
+    .hero-meta {
+      display: flex;
+      justify-content: center;
+      gap: 24px;
+      flex-wrap: wrap;
+      font-size: 0.85rem;
+      opacity: 0.75;
+    }
+    .hero-meta span { display: flex; align-items: center; gap: 6px; }
+
+    /* ── Nav ── */
+    nav {
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      padding: 0 24px;
+      box-shadow: 0 1px 6px rgba(0,0,0,0.06);
+    }
+    .nav-inner {
+      max-width: 1080px;
+      margin: 0 auto;
+      display: flex;
+      gap: 4px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .nav-inner::-webkit-scrollbar { display: none; }
+    nav a {
+      display: inline-block;
+      padding: 14px 16px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-decoration: none;
+      white-space: nowrap;
+      border-bottom: 2px solid transparent;
+      transition: color 0.2s, border-color 0.2s;
+    }
+    nav a:hover { color: var(--primary); border-bottom-color: var(--primary); }
+
+    /* ── Layout ── */
+    .container {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 56px 24px;
+    }
+    section { margin-bottom: 72px; }
+
+    /* ── Section header ── */
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 32px;
+    }
+    .section-icon {
+      width: 44px; height: 44px;
+      border-radius: 12px;
+      background: var(--primary-light);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.3rem;
+      flex-shrink: 0;
+    }
+    .section-header h2 {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: var(--text);
+    }
+    .section-header p {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    /* ── Card ── */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px;
+      transition: box-shadow 0.2s, transform 0.2s;
+    }
+    .card:hover { box-shadow: 0 6px 24px rgba(15,108,189,0.1); transform: translateY(-2px); }
+
+    /* ── Overview Grid ── */
+    .overview-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 20px;
+    }
+    .overview-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 24px 20px;
+      text-align: center;
+      transition: box-shadow 0.2s, transform 0.2s;
+    }
+    .overview-card:hover { box-shadow: 0 6px 20px rgba(15,108,189,0.1); transform: translateY(-3px); }
+    .overview-card .oc-icon {
+      font-size: 2.2rem;
+      margin-bottom: 12px;
+    }
+    .overview-card h3 { font-size: 1rem; font-weight: 700; margin-bottom: 6px; }
+    .overview-card p { font-size: 0.83rem; color: var(--text-muted); line-height: 1.5; }
+
+    /* ── Definition Box ── */
+    .definition-box {
+      background: var(--primary-light);
+      border-left: 4px solid var(--primary);
+      border-radius: 0 12px 12px 0;
+      padding: 24px 28px;
+      margin-bottom: 28px;
+    }
+    .definition-box .label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--primary);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    .definition-box p { font-size: 1rem; font-weight: 500; color: var(--text); }
+
+    /* ── Feature Grid ── */
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+    }
+    .feature-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 24px;
+      display: flex;
+      gap: 16px;
+      transition: box-shadow 0.2s, transform 0.2s;
+    }
+    .feature-card:hover { box-shadow: 0 6px 20px rgba(15,108,189,0.1); transform: translateY(-2px); }
+    .feature-card .fc-icon {
+      width: 48px; height: 48px; flex-shrink: 0;
+      border-radius: 12px;
+      background: var(--primary-light);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.4rem;
+    }
+    .feature-card h3 { font-size: 0.97rem; font-weight: 700; margin-bottom: 6px; }
+    .feature-card p { font-size: 0.83rem; color: var(--text-muted); line-height: 1.55; }
+
+    /* ── Compare Table ── */
+    .table-wrapper { overflow-x: auto; border-radius: 14px; border: 1px solid var(--border); }
+    table { width: 100%; border-collapse: collapse; background: var(--card); }
+    thead { background: var(--primary); color: #fff; }
+    thead th { padding: 14px 18px; font-size: 0.88rem; font-weight: 700; text-align: left; }
+    tbody tr { border-bottom: 1px solid var(--border); transition: background 0.15s; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: var(--primary-light); }
+    tbody td { padding: 13px 18px; font-size: 0.85rem; color: var(--text); vertical-align: top; }
+    tbody td:first-child { font-weight: 600; color: var(--primary-dark); }
+    .badge {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .badge-blue { background: var(--primary-light); color: var(--primary-dark); }
+    .badge-purple { background: var(--accent-light); color: var(--accent); }
+
+    /* ── Use Case Grid ── */
+    .usecase-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+    }
+    .usecase-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 22px 18px;
+      text-align: center;
+      transition: box-shadow 0.2s, transform 0.2s;
+    }
+    .usecase-card:hover { box-shadow: 0 6px 20px rgba(15,108,189,0.12); transform: translateY(-3px); }
+    .usecase-card .uc-icon { font-size: 2rem; margin-bottom: 10px; }
+    .usecase-card h3 { font-size: 0.9rem; font-weight: 700; margin-bottom: 6px; }
+    .usecase-card p { font-size: 0.78rem; color: var(--text-muted); line-height: 1.5; }
+
+    /* ── Steps ── */
+    .steps { display: flex; flex-direction: column; gap: 16px; }
+    .step {
+      display: flex;
+      align-items: flex-start;
+      gap: 18px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px 24px;
+      transition: box-shadow 0.2s;
+    }
+    .step:hover { box-shadow: 0 4px 16px rgba(15,108,189,0.09); }
+    .step-num {
+      width: 40px; height: 40px; flex-shrink: 0;
+      border-radius: 50%;
+      background: var(--primary);
+      color: #fff;
+      font-size: 0.9rem;
+      font-weight: 800;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .step h3 { font-size: 0.95rem; font-weight: 700; margin-bottom: 4px; }
+    .step p { font-size: 0.83rem; color: var(--text-muted); }
+
+    /* ── CTA ── */
+    .cta-box {
+      background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+      border-radius: 20px;
+      padding: 48px 36px;
+      text-align: center;
+      color: #fff;
+    }
+    .cta-box h2 { font-size: 1.6rem; font-weight: 800; margin-bottom: 12px; }
+    .cta-box p { font-size: 0.95rem; opacity: 0.88; margin-bottom: 28px; }
+    .cta-btn {
+      display: inline-block;
+      background: #fff;
+      color: var(--primary-dark);
+      font-family: 'Pretendard', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 700;
+      padding: 13px 32px;
+      border-radius: 10px;
+      text-decoration: none;
+      transition: background 0.2s, transform 0.2s;
+    }
+    .cta-btn:hover { background: var(--primary-light); transform: translateY(-2px); }
+
+    /* ── Footer ── */
+    footer {
+      background: var(--card);
+      border-top: 1px solid var(--border);
+      text-align: center;
+      padding: 28px 24px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+    footer a { color: var(--primary); text-decoration: none; }
+
+    /* ── Divider ── */
+    .divider { height: 1px; background: var(--border); margin: 0 0 72px; }
+
+    @media (max-width: 600px) {
+      .hero { padding: 56px 20px 44px; }
+      .container { padding: 40px 18px; }
+      .feature-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Hero -->
+<header class="hero">
+  <div class="hero-badge">Microsoft AI Platform</div>
+  <h1>Microsoft<br /><span>Copilot Studio</span> 완벽 정리</h1>
+  <p>노코드/로우코드로 나만의 AI 에이전트를 만드는 방법, 핵심 개념부터 활용 사례까지 한눈에.</p>
+  <div class="hero-meta">
+    <span>🗓 2026년 7월</span>
+    <span>⚡ Microsoft Power Platform</span>
+    <span>🔗 copilotstudio.microsoft.com</span>
+  </div>
+</header>
+
+<!-- Nav -->
+<nav>
+  <div class="nav-inner">
+    <a href="#overview">개요</a>
+    <a href="#concept">핵심 개념</a>
+    <a href="#features">주요 기능</a>
+    <a href="#compare">비교</a>
+    <a href="#usecase">활용 사례</a>
+    <a href="#howto">시작 방법</a>
+  </div>
+</nav>
+
+<main class="container">
+
+  <!-- 개요 -->
+  <section id="overview">
+    <div class="section-header">
+      <div class="section-icon">🚀</div>
+      <div>
+        <h2>Copilot Studio란?</h2>
+        <p>AI 에이전트 개발을 위한 Microsoft 로우코드 플랫폼</p>
+      </div>
+    </div>
+
+    <div class="definition-box">
+      <div class="label">공식 정의</div>
+      <p>Copilot Studio는 에이전트 및 에이전트 흐름(Flow)을 빌드하기 위한 <strong>그래픽 기반 로우코드(Low-code) 도구</strong>입니다. 직관적인 드래그 앤 드롭 인터페이스를 통해 대화형 AI 에이전트와 자동화 워크플로우를 누구나 쉽게 만들 수 있습니다.</p>
+    </div>
+
+    <div class="overview-grid">
+      <div class="overview-card">
+        <div class="oc-icon">🖱️</div>
+        <h3>로우코드</h3>
+        <p>코딩 경험 없이도 시각적 편집기로 에이전트 제작 가능</p>
+      </div>
+      <div class="overview-card">
+        <div class="oc-icon">🤖</div>
+        <h3>생성형 AI</h3>
+        <p>Azure OpenAI 기반의 고정밀 자연어 이해 및 생성 AI 탑재</p>
+      </div>
+      <div class="overview-card">
+        <div class="oc-icon">🔗</div>
+        <h3>통합 연결</h3>
+        <p>Teams, SharePoint, Power Automate 등 Microsoft 생태계 완전 연동</p>
+      </div>
+      <div class="overview-card">
+        <div class="oc-icon">🌐</div>
+        <h3>멀티채널</h3>
+        <p>웹, 모바일, Teams, Facebook 등 다양한 채널에 에이전트 배포</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- 핵심 개념 -->
+  <section id="concept">
+    <div class="section-header">
+      <div class="section-icon">🧠</div>
+      <div>
+        <h2>핵심 개념</h2>
+        <p>에이전트와 흐름(Flow)의 차이를 이해하세요</p>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;">
+      <div class="card">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+          <span style="font-size:1.8rem;">🤖</span>
+          <div>
+            <h3 style="font-size:1.05rem;font-weight:800;">에이전트 (Agent)</h3>
+            <span class="badge badge-blue">대화형 AI</span>
+          </div>
+        </div>
+        <p style="font-size:0.85rem;color:var(--text-muted);line-height:1.6;">다양한 상호작용과 작업을 처리하는 <strong>AI 동반자</strong>입니다. 복잡한 대화 문제를 해결하고, 지침·컨텍스트에 따라 최선의 조치를 <strong>자율적으로 결정</strong>합니다. 언어 모델 외에도 지식 소스, 주제, 도구, 트리거를 조율하여 목표를 달성합니다.</p>
+        <ul style="margin-top:14px;padding-left:18px;font-size:0.82rem;color:var(--text-muted);line-height:1.8;">
+          <li>여러 언어 및 채널에서 고객·직원과 소통</li>
+          <li>데이터 과학자·개발자 없이도 제작 가능</li>
+          <li>대화 중 작업 실행 또는 트리거에 반응</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+          <span style="font-size:1.8rem;">⚡</span>
+          <div>
+            <h3 style="font-size:1.05rem;font-weight:800;">에이전트 흐름 (Agent Flow)</h3>
+            <span class="badge badge-purple">자동화 워크플로우</span>
+          </div>
+        </div>
+        <p style="font-size:0.85rem;color:var(--text-muted);line-height:1.6;">에이전트가 수행하는 <strong>자동화 워크플로우</strong>입니다. Power Automate와 연동하여 승인 프로세스, 데이터 처리, 알림 발송 등 반복적인 업무를 자동으로 실행합니다.</p>
+        <ul style="margin-top:14px;padding-left:18px;font-size:0.82rem;color:var(--text-muted);line-height:1.8;">
+          <li>자연어로 흐름 빌드 가능</li>
+          <li>디자이너에서 시각적 편집</li>
+          <li>에이전트 대화 중 자동 트리거</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- 주요 기능 -->
+  <section id="features">
+    <div class="section-header">
+      <div class="section-icon">✨</div>
+      <div>
+        <h2>주요 기능</h2>
+        <p>Copilot Studio가 제공하는 핵심 기능 8가지</p>
+      </div>
+    </div>
+
+    <div class="feature-grid">
+      <div class="feature-card">
+        <div class="fc-icon">🖱️</div>
+        <div>
+          <h3>노코드/로우코드 에이전트 빌드</h3>
+          <p>드래그 앤 드롭과 자연어 프롬프트만으로 AI 에이전트 제작. 기술 배경이 없어도 쉽게 접근 가능합니다.</p>
+        </div>
+      </div>
+      <div class="feature-card">
+        <div class="fc-icon">📚</div>
+        <div>
+          <h3>다양한 지식 소스 연결</h3>
+          <p>공개 웹사이트, SharePoint 문서, 파일 업로드 등을 에이전트의 지식 기반으로 활용할 수 있습니다.</p>
+        </div>
+      </div>
+      <div class="feature-card">
+        <div class="fc-icon">🔌</div>
+        <div>
+          <h3>커넥터 연동</h3>
+          <p>수백 개의 미리 빌드된 커넥터 또는 사용자 지정 커넥터로 다양한 데이터 소스와 서비스에 연결합니다.</p>
+        </div>
+      </div>
+      <div class="feature-card">
+        <div class="fc-icon">🤖</div>
+        <div>
+          <h3>생성형 AI (Azure OpenAI)</h3>
+          <p>Azure OpenAI 기반의 고정밀 자연어 이해·생성 엔진으로 더욱 정확하고 자연스러운 대화 구현이 가능합니다.</p>
+        </div>
+      </div>
+      <div class="feature-card">
+        <div class="fc-icon">⚡</div>
+        <div>
+          <h3>에이전트 흐름 & 워크플로우</h3>
+          <p>Power Automate와 연동한 자동화 워크플로우를 자연어 또는 디자이너에서 편집·관리합니다.</p>
+        </div>
+      </div>
+      <div class="feature-card">
+        <div class="fc-icon">🌐</div>
+        <div>
+          <h3>멀티채널 배포</h3>
+          <p>웹사이트, 모바일 앱, Microsoft Teams, Facebook, Azure Bot Service 등 다양한 채널에 즉시 배포합니다.</p>
+        </div>
+      </div>
+      <div class="feature-card">
+        <div class="fc-icon">🔒</div>
+        <div>
+          <h3>엔터프라이즈 보안</h3>
+          <p>기업 보안 환경 내에서 안전하게 AI를 구현. Microsoft 365 보안 규정 준수 정책을 그대로 적용합니다.</p>
+        </div>
+      </div>
+      <div class="feature-card">
+        <div class="fc-icon">🔄</div>
+        <div>
+          <h3>MCP 서버 연결</h3>
+          <p>모델 컨텍스트 프로토콜(MCP) 서버를 에이전트에 추가하여 외부 도구와 리소스를 활용합니다.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- 비교 -->
+  <section id="compare">
+    <div class="section-header">
+      <div class="section-icon">📊</div>
+      <div>
+        <h2>Copilot Chat vs Copilot Studio</h2>
+        <p>두 도구의 차이를 명확히 이해하세요</p>
+      </div>
+    </div>
+
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>구분</th>
+            <th>Copilot Chat</th>
+            <th>Copilot Studio</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>목적</td>
+            <td>개인 생산성 향상 (AI 사용)</td>
+            <td>AI 에이전트 설계·제작 (AI 개발)</td>
+          </tr>
+          <tr>
+            <td>주요 기능</td>
+            <td>질문 답변, 문서 요약, 이메일 작성</td>
+            <td>업무 자동화, 커스텀 AI 에이전트 구축</td>
+          </tr>
+          <tr>
+            <td>주요 사용자</td>
+            <td><span class="badge badge-blue">일반 직원</span></td>
+            <td><span class="badge badge-purple">IT 담당자 · 시민 개발자</span></td>
+          </tr>
+          <tr>
+            <td>범위</td>
+            <td>단순 대화형 지원</td>
+            <td>업무 실행까지 가능한 자동화</td>
+          </tr>
+          <tr>
+            <td>커스터마이징</td>
+            <td>제한적</td>
+            <td>완전 커스터마이징 가능</td>
+          </tr>
+          <tr>
+            <td>데이터 연동</td>
+            <td>Microsoft 365 문서 중심</td>
+            <td>SharePoint, 외부 API, 커스텀 DB 등</td>
+          </tr>
+          <tr>
+            <td>배포 채널</td>
+            <td>Teams, Microsoft 365 앱</td>
+            <td>웹, 앱, Teams, Facebook 등 멀티채널</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div style="margin-top:20px;background:var(--warning-light);border-left:4px solid var(--warning);border-radius:0 10px 10px 0;padding:16px 20px;">
+      <p style="font-size:0.85rem;color:var(--text);"><strong>💡 한줄 요약:</strong> Copilot Chat은 "AI를 사용하는 도구", Copilot Studio는 "AI를 만드는 플랫폼"입니다.</p>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- 활용 사례 -->
+  <section id="usecase">
+    <div class="section-header">
+      <div class="section-icon">🏢</div>
+      <div>
+        <h2>주요 활용 사례</h2>
+        <p>기업 현장에서 실제로 쓰이는 Copilot Studio 활용 예시</p>
+      </div>
+    </div>
+
+    <div class="usecase-grid">
+      <div class="usecase-card">
+        <div class="uc-icon">🛒</div>
+        <h3>영업 지원 챗봇</h3>
+        <p>제품 정보, 영업 시간, 매장 안내를 24시간 자동 응대</p>
+      </div>
+      <div class="usecase-card">
+        <div class="uc-icon">👩‍💼</div>
+        <h3>HR 안내 에이전트</h3>
+        <p>직원 휴가·복지 혜택·사내 정책을 즉시 안내</p>
+      </div>
+      <div class="usecase-card">
+        <div class="uc-icon">✅</div>
+        <h3>승인 프로세스 자동화</h3>
+        <p>결재 요청을 받아 자동 라우팅 및 알림 발송</p>
+      </div>
+      <div class="usecase-card">
+        <div class="uc-icon">🏥</div>
+        <h3>공중보건 정보 안내</h3>
+        <p>최신 공중보건 가이드라인을 다국어로 안내</p>
+      </div>
+      <div class="usecase-card">
+        <div class="uc-icon">📞</div>
+        <h3>내부 헬프데스크</h3>
+        <p>IT 지원 문의를 에이전트가 1차 처리 후 담당자 연결</p>
+      </div>
+      <div class="usecase-card">
+        <div class="uc-icon">📄</div>
+        <h3>문서 기반 Q&A</h3>
+        <p>내부 문서·매뉴얼을 지식 소스로 하는 전문 답변 봇</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- 시작 방법 -->
+  <section id="howto">
+    <div class="section-header">
+      <div class="section-icon">🛠️</div>
+      <div>
+        <h2>시작 방법</h2>
+        <p>Copilot Studio에서 나만의 에이전트 만들기</p>
+      </div>
+    </div>
+
+    <div style="background:var(--success-light);border-left:4px solid var(--success);border-radius:0 12px 12px 0;padding:16px 20px;margin-bottom:28px;">
+      <p style="font-size:0.85rem;color:var(--text);"><strong>✅ 필수 조건:</strong> 회사/학교 계정 + Microsoft 365 비즈니스 구독 + Copilot Studio 구독이 필요합니다. (개인 계정 사용 불가)</p>
+    </div>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div>
+          <h3>Copilot Studio 접속</h3>
+          <p><strong>copilotstudio.microsoft.com</strong>에 접속하여 회사/학교 계정으로 로그인합니다.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div>
+          <h3>새 에이전트 생성</h3>
+          <p>홈 화면의 <strong>Create</strong> 메뉴에서 새 에이전트를 만듭니다. 프롬프트 설명만으로 이름·역할·정보 출처를 자동 설정할 수 있습니다.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div>
+          <h3>지식 소스 & 토픽 설정</h3>
+          <p>SharePoint, 파일, 웹사이트 등 <strong>지식 소스를 추가</strong>하고, 에이전트가 대화할 주제(토픽)를 정의합니다.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div>
+          <h3>커넥터 & 흐름 연결</h3>
+          <p>필요한 외부 서비스 커넥터를 추가하고, <strong>Power Automate 흐름</strong>을 연결하여 자동화 기능을 구현합니다.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">5</div>
+        <div>
+          <h3>테스트 & 게시</h3>
+          <p>빌트인 테스트 패널에서 에이전트를 충분히 테스트한 후, 원하는 <strong>채널(Teams, 웹 등)에 게시</strong>합니다.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <div class="cta-box">
+    <h2>지금 바로 시작해보세요!</h2>
+    <p>코딩 없이도 나만의 AI 에이전트를 만들 수 있습니다.<br />Microsoft Copilot Studio 공식 사이트에서 무료 체험을 시작하세요.</p>
+    <a href="https://www.copilotstudio.microsoft.com" target="_blank" class="cta-btn">🚀 Copilot Studio 시작하기</a>
+  </div>
+
+</main>
+
+<footer>
+  <p>📘 본 자료는 <a href="https://learn.microsoft.com/ko-kr/microsoft-copilot-studio/" target="_blank">Microsoft 공식 문서</a>를 바탕으로 작성되었습니다. &nbsp;|&nbsp; 2026년 7월 기준</p>
+</footer>
+
+</body>
+</html>
