@@ -85,7 +85,6 @@
   .stage { display: flex; flex-direction: column; align-items: center; gap: 22px; min-width: 0; }
   .wheel-box { position: relative; width: min(100%, 560px, 62vh); aspect-ratio: 1; max-width: 100%; }
   .wheel-box svg { width: 100%; height: 100%; display: block; }
-  #wheel { transform-origin: 50% 50%; }
   .pointer {
     position: absolute; left: 50%; top: -6px; transform: translateX(-50%);
     width: 0; height: 0;
@@ -394,7 +393,7 @@
     function frame(now) {
       const t = Math.min(1, (now - t0) / dur);
       rotation = start + (target - start) * ease(t);
-      wheel.setAttribute("transform", `rotate(${rotation})`);
+      wheel.setAttribute("transform", `rotate(${rotation} 0 0)`);
       const peg = Math.floor(rotation / 15);
       if (peg !== lastPeg) { lastPeg = peg; tick(); pointer.classList.remove("bump"); void pointer.offsetWidth; pointer.classList.add("bump"); }
       if (t < 1) requestAnimationFrame(frame); else finish(prize);
@@ -406,7 +405,7 @@
     spinning = false;
     state.left[prize.id] = Math.max(0, state.left[prize.id] - 1);
     state.log.push({ id: prize.id, n: state.log.length + 1, t: Date.now() });
-    save(); drawWheel(); wheel.setAttribute("transform", `rotate(${rotation})`); renderPanel();
+    save(); drawWheel(); wheel.setAttribute("transform", `rotate(${rotation} 0 0)`); renderPanel();
     showResult(prize);
   }
 
@@ -485,7 +484,7 @@
   adminOverlay.addEventListener("click", e => { if (e.target === adminOverlay) closeAdmin(); });
   document.getElementById("adminSave").addEventListener("click", () => {
     PRIZES.forEach(p => { state.init[p.id] = val("init-" + p.id); state.left[p.id] = val("left-" + p.id); });
-    save(); drawWheel(); wheel.setAttribute("transform", `rotate(${rotation})`); renderPanel(); closeAdmin();
+    save(); drawWheel(); wheel.setAttribute("transform", `rotate(${rotation} 0 0)`); renderPanel(); closeAdmin();
   });
   let armTimer = 0;
   function disarm() { resetBtn.classList.remove("armed"); resetBtn.textContent = "처음 수량으로 되돌리기"; clearTimeout(armTimer); }
@@ -495,7 +494,7 @@
       armTimer = setTimeout(disarm, 4000); return;
     }
     PRIZES.forEach(p => { state.init[p.id] = val("init-" + p.id); state.left[p.id] = state.init[p.id]; });
-    state.log = []; save(); drawWheel(); wheel.setAttribute("transform", `rotate(${rotation})`); renderPanel(); closeAdmin();
+    state.log = []; save(); drawWheel(); wheel.setAttribute("transform", `rotate(${rotation} 0 0)`); renderPanel(); closeAdmin();
   });
 
   // ── 기타 버튼 ──
