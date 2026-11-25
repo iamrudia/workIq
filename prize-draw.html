@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>AI ROAD 상품 뽑기</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;500;700;900&display=swap">
+<style>
+  /* Layout: 아스팔트 위의 도로 표지판. 왼쪽 큰 룰렛 + 오른쪽 재고 패널, 좁은 화면에서는 세로로 쌓임.
+     부스 화면용으로 한 가지 어두운 테마만 사용합니다. */
+  :root {
+    color-scheme: dark;
+    --asphalt: #1f2326;
+    --asphalt-2: #2a2f33;
+    --asphalt-3: #363c41;
+    --line: #f2c230;        /* 중앙선 노랑 */
+    --paint: #f4f2ea;       /* 차선 흰색 */
+    --muted: #a7adb2;
+    --sign-blue: #1d5fb4;   /* 패드수첩 */
+    --sign-green: #1e7d4f;  /* 뱃지 */
+    --sign-gold: #f2c230;   /* 세트 */
+    --sign-gray: #5b6268;   /* 꽝 */
+    --danger: #e0533d;
+    --font-display: "Black Han Sans", "Noto Sans KR", system-ui, sans-serif;
+    --font-body: "Noto Sans KR", system-ui, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  }
+  [hidden] { display: none !important; }
+  *, *::before, *::after { box-sizing: border-box; }
+  body { margin: 0; }
+  html, body { height: 100%; }
+  body {
+    background: radial-gradient(ellipse at 50% 0%, #2c3236 0%, var(--asphalt) 60%) var(--asphalt);
+    color: var(--paint);
+    font-family: var(--font-body);
+    font-size: 16px;
+    overflow-x: hidden;
+  }
+  .wrap {
+    min-height: 100%;
+    display: flex; flex-direction: column; gap: 20px;
+    padding-block: 20px 28px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    max-width: 1280px; margin: 0 auto;
+  }
+
+  /* ── 상단 표지판 ── */
+  header.top {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  }
+  .road-sign {
+    display: inline-flex; align-items: center; gap: 14px;
+    background: var(--sign-green); color: #fff;
+    border: 3px solid #fff; border-radius: 10px;
+    padding: 10px 18px; box-shadow: 0 0 0 3px var(--sign-green), 0 8px 24px rgba(0,0,0,.35);
+    min-width: 0;
+  }
+  .road-sign .route {
+    font-family: var(--font-display); font-size: 1.1rem;
+    background: var(--sign-blue); border: 2px solid #fff; border-radius: 6px;
+    padding: 2px 10px; letter-spacing: .04em; white-space: nowrap;
+  }
+  .road-sign h1 { font-family: var(--font-display); font-weight: 400; font-size: clamp(1.25rem, 2.6vw, 1.9rem); line-height: 1.15; text-wrap: balance; }
+  .road-sign p { font-size: .85rem; opacity: .92; margin-top: 2px; }
+  .tools { display: flex; gap: 8px; }
+  .icon-btn {
+    font: inherit; font-size: .9rem; font-weight: 700; color: var(--paint);
+    background: var(--asphalt-2); border: 1px solid var(--asphalt-3);
+    border-radius: 8px; padding: 9px 12px; cursor: pointer;
+  }
+  .icon-btn:hover { background: var(--asphalt-3); }
+  .icon-btn[aria-pressed="true"] { border-color: var(--line); color: var(--line); }
+  :focus-visible { outline: 3px solid var(--line); outline-offset: 2px; }
+
+  /* ── 본문 ── */
+  main {
+    display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+    gap: 28px; align-items: center; flex: 1;
+  }
+  @media (max-width: 860px) { main { grid-template-columns: minmax(0,1fr); } }
+
+  .stage { display: flex; flex-direction: column; align-items: center; gap: 22px; min-width: 0; }
+  .wheel-box { position: relative; width: min(100%, 560px, 62vh); aspect-ratio: 1; max-width: 100%; }
+  .wheel-box svg { width: 100%; height: 100%; display: block; }
+  #wheel { transform-origin: 50% 50%; }
+  .pointer {
+    position: absolute; left: 50%; top: -6px; transform: translateX(-50%);
+    width: 0; height: 0;
+    border-left: 22px solid transparent; border-right: 22px solid transparent;
+    border-top: 40px solid var(--danger);
+    filter: drop-shadow(0 4px 4px rgba(0,0,0,.5));
+    z-index: 2;
+  }
+  .pointer.bump { animation: bump .09s ease-out; }
+  @keyframes bump { 50% { transform: translateX(-50%) rotate(-12deg); } }
+
+  .spin-btn {
+    font-family: var(--font-display); font-size: clamp(1.6rem, 3.4vw, 2.3rem); letter-spacing: .06em;
+    color: #1a1a1a; background: var(--line);
+    border: 4px solid var(--paint); border-radius: 999px;
+    padding: 14px 54px; cursor: pointer;
+    box-shadow: 0 6px 0 #9c7a12, 0 12px 30px rgba(0,0,0,.4);
+    transition: transform .08s, box-shadow .08s;
+  }
+  .spin-btn:active:not(:disabled) { transform: translateY(4px); box-shadow: 0 2px 0 #9c7a12, 0 6px 14px rgba(0,0,0,.4); }
+  .spin-btn:disabled { background: var(--asphalt-3); color: var(--muted); box-shadow: none; cursor: not-allowed; border-color: var(--asphalt-3); }
+  .hint { color: var(--muted); font-size: .85rem; }
+  .hint kbd { font-family: inherit; border: 1px solid var(--asphalt-3); border-radius: 4px; padding: 0 6px; background: var(--asphalt-2); }
+
+  /* ── 재고 패널 ── */
+  .panel { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+  .panel h2 { font-family: var(--font-display); font-weight: 400; font-size: 1.35rem; letter-spacing: .02em; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .panel h2 small { font-family: var(--font-body); font-size: .85rem; color: var(--muted); font-weight: 500; }
+  .stock { display: grid; gap: 10px; }
+  .stock-row {
+    display: grid; grid-template-columns: 14px minmax(0,1fr) auto; gap: 12px; align-items: center;
+    background: var(--asphalt-2); border-radius: 10px; padding: 12px 14px;
+  }
+  .stock-row.out { opacity: .45; }
+  .swatch { width: 14px; height: 44px; border-radius: 4px; }
+  .stock-row .name { font-weight: 700; font-size: 1.05rem; }
+  .stock-row .desc { font-size: .8rem; color: var(--muted); }
+  .bar { height: 6px; background: var(--asphalt-3); border-radius: 99px; margin-top: 6px; overflow: hidden; }
+  .bar > i { display: block; height: 100%; border-radius: 99px; transition: width .4s; }
+  .stock-row .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .stock-row .num b { font-family: var(--font-display); font-weight: 400; font-size: 1.6rem; }
+  .stock-row .num span { display: block; font-size: .75rem; color: var(--muted); }
+
+  .log { background: var(--asphalt-2); border-radius: 10px; padding: 12px 14px; }
+  .log h3 { font-size: .85rem; color: var(--muted); font-weight: 500; margin-bottom: 8px; letter-spacing: .04em; }
+  .log ol { list-style: none; display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; max-height: 92px; overflow-y: auto; }
+  .chip { font-size: .8rem; font-weight: 700; padding: 3px 9px; border-radius: 99px; color: #fff; font-variant-numeric: tabular-nums; }
+  .log .empty { color: var(--muted); font-size: .85rem; }
+
+  /* ── 결과 오버레이 ── */
+  .overlay {
+    position: fixed; inset: 0; z-index: 20;
+    display: grid; place-items: center;
+    background: rgba(10,12,14,.72); backdrop-filter: blur(3px);
+    padding: 24px max(16px, env(safe-area-inset-right, 0px)) 24px max(16px, env(safe-area-inset-left, 0px));
+  }
+  .result {
+    width: min(520px, 100%); text-align: center;
+    border: 6px solid #fff; border-radius: 22px;
+    padding: 34px 24px 26px; color: #fff;
+    box-shadow: 0 30px 80px rgba(0,0,0,.55);
+    animation: pop .45s cubic-bezier(.2,1.6,.4,1);
+  }
+  @keyframes pop { from { transform: scale(.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .result .eyebrow { font-weight: 700; letter-spacing: .12em; font-size: .9rem; opacity: .9; }
+  .result .prize { font-family: var(--font-display); font-size: clamp(2.6rem, 9vw, 4.4rem); line-height: 1.1; margin: 10px 0 6px; text-wrap: balance; }
+  .result .detail { font-size: 1.05rem; opacity: .95; }
+  .result button {
+    margin-top: 22px; font: inherit; font-weight: 900; font-size: 1.05rem;
+    background: #fff; color: #1a1a1a; border: 0; border-radius: 99px; padding: 12px 34px; cursor: pointer;
+  }
+  .result.dark-text { color: #1a1a1a; border-color: #1a1a1a; }
+  .result.dark-text button { background: #1a1a1a; color: #fff; }
+
+  /* ── 관리자 설정 ── */
+  .sheet {
+    width: min(560px, 100%); max-height: calc(100vh - 48px); overflow-y: auto;
+    background: var(--asphalt-2); border: 1px solid var(--asphalt-3); border-radius: 16px;
+    padding: 22px; display: flex; flex-direction: column; gap: 16px;
+  }
+  .sheet h2 { font-family: var(--font-display); font-weight: 400; font-size: 1.4rem; }
+  .sheet p.note { font-size: .85rem; color: var(--muted); line-height: 1.6; }
+  .grid-form { display: grid; grid-template-columns: minmax(0,1fr) 92px 92px; gap: 8px 10px; align-items: center; }
+  .grid-form .head { font-size: .75rem; color: var(--muted); font-weight: 700; text-align: center; }
+  .grid-form .head:first-child { text-align: left; }
+  .grid-form label { font-weight: 700; display: flex; align-items: center; gap: 8px; }
+  .grid-form label i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+  .grid-form input {
+    width: 100%; font: inherit; font-variant-numeric: tabular-nums; text-align: center;
+    background: var(--asphalt); color: var(--paint); border: 1px solid var(--asphalt-3); border-radius: 8px; padding: 8px 6px;
+  }
+  .prob-line { font-size: .85rem; color: var(--muted); background: var(--asphalt); border-radius: 8px; padding: 10px 12px; line-height: 1.7; font-variant-numeric: tabular-nums; }
+  .sheet-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+  .btn { font: inherit; font-weight: 700; border-radius: 8px; padding: 10px 16px; cursor: pointer; border: 1px solid var(--asphalt-3); background: var(--asphalt-3); color: var(--paint); }
+  .btn.primary { background: var(--line); color: #1a1a1a; border-color: var(--line); }
+  .btn.danger { background: transparent; color: var(--danger); border-color: var(--danger); }
+  .btn.danger.armed { background: var(--danger); color: #fff; }
+
+  canvas#confetti { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 30; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .result { animation: none; }
+    .pointer.bump { animation: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="top">
+    <div class="road-sign">
+      <span class="route">AI ROAD</span>
+      <div>
+        <h1>2026 파주 AI ROAD 컨퍼런스</h1>
+        <p>광탄중학교 AI 디지털 선도학교 · 행운의 상품 뽑기</p>
+      </div>
+    </div>
+    <div class="tools">
+      <button class="icon-btn" id="soundBtn" type="button" aria-pressed="true" title="효과음 켜기/끄기">소리 켜짐</button>
+      <button class="icon-btn" id="fsBtn" type="button" title="전체 화면">전체 화면</button>
+      <button class="icon-btn" id="adminBtn" type="button" title="수량·확률 설정 (운영자용)">운영 설정</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="stage" aria-label="룰렛">
+      <div class="wheel-box">
+        <div class="pointer" id="pointer" aria-hidden="true"></div>
+        <svg viewBox="-260 -260 520 520" role="img" aria-label="상품 4개 존 룰렛">
+          <circle r="256" fill="#f4f2ea"></circle>
+          <circle r="248" fill="#1f2326"></circle>
+          <g id="wheel"></g>
+          <circle r="54" fill="#1f2326" stroke="#f4f2ea" stroke-width="6"></circle>
+          <text y="9" text-anchor="middle" fill="#f2c230" font-family="Black Han Sans, Noto Sans KR, sans-serif" font-size="26">AI</text>
+        </svg>
+      </div>
+      <button class="spin-btn" id="spinBtn" type="button">돌리기!</button>
+      <p class="hint">버튼을 누르거나 <kbd>Space</kbd> 키를 누르세요</p>
+    </section>
+
+    <aside class="panel" aria-label="남은 상품">
+      <h2>남은 상품 <small id="totalLeft"></small></h2>
+      <div class="stock" id="stock"></div>
+      <div class="log">
+        <h3>최근 결과</h3>
+        <ol id="log"></ol>
+      </div>
+    </aside>
+  </main>
+</div>
+
+<div class="overlay" id="resultOverlay" hidden>
+  <div class="result" id="resultCard" role="dialog" aria-modal="true" aria-labelledby="resultPrize">
+    <div class="eyebrow" id="resultEyebrow">축하합니다!</div>
+    <div class="prize" id="resultPrize">패드수첩</div>
+    <div class="detail" id="resultDetail"></div>
+    <button type="button" id="resultClose">확인</button>
+  </div>
+</div>
+
+<div class="overlay" id="adminOverlay" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="adminTitle">
+    <h2 id="adminTitle">운영 설정</h2>
+    <p class="note">뽑기 확률은 <b>남은 수량</b>에 비례합니다. 예를 들어 남은 수량이 세트 5 · 패드수첩 30 · 뱃지 40 · 꽝 25라면 세트가 나올 확률은 5%입니다. 상품이 줄어들면 확률도 자동으로 바뀌고, 수량이 0이 된 존은 다시 나오지 않습니다. 꽝 수량은 "꽝 티켓" 개수라고 생각하시면 됩니다.</p>
+    <div class="grid-form" id="adminForm">
+      <div class="head">상품</div><div class="head">처음 수량</div><div class="head">남은 수량</div>
+    </div>
+    <div class="prob-line" id="probLine"></div>
+    <div class="sheet-actions">
+      <button class="btn danger" id="resetBtn" type="button">처음 수량으로 되돌리기</button>
+      <button class="btn" id="adminCancel" type="button">닫기</button>
+      <button class="btn primary" id="adminSave" type="button">저장</button>
+    </div>
+  </div>
+</div>
+
+<canvas id="confetti" aria-hidden="true"></canvas>
+
+<script>
+(() => {
+  // 상품 정의 (룰렛 존 순서: 위쪽부터 시계 방향)
+  const PRIZES = [
+    { id: "pad",   name: "패드수첩",  desc: "패드수첩 1권",                color: "#1d5fb4", text: "#fff", init: 30 },
+    { id: "miss",  name: "꽝",       desc: "다음 기회에!",                color: "#5b6268", text: "#fff", init: 25 },
+    { id: "badge", name: "뱃지",      desc: "AI ROAD 뱃지 1개",            color: "#1e7d4f", text: "#fff", init: 40 },
+    { id: "set",   name: "세트",      desc: "패드수첩 + 리갈패드 + 뱃지",     color: "#f2c230", text: "#1a1a1a", init: 5 },
+  ];
+  const KEY = "airoad-prize-draw-v1";
+  const ZONE = 360 / PRIZES.length;
+
+  let state = load();
+  function load() {
+    const base = { init: {}, left: {}, log: [], sound: true };
+    PRIZES.forEach(p => { base.init[p.id] = p.init; base.left[p.id] = p.init; });
+    try {
+      const s = JSON.parse(localStorage.getItem(KEY) || "null");
+      if (s && s.init && s.left) return { ...base, ...s };
+    } catch (e) {}
+    return base;
+  }
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+
+  // ── 룰렛 그리기 ──
+  const wheel = document.getElementById("wheel");
+  const R = 240;
+  function polar(deg, r) { const a = (deg - 90) * Math.PI / 180; return [Math.cos(a) * r, Math.sin(a) * r]; }
+  function drawWheel() {
+    let svg = "";
+    PRIZES.forEach((p, i) => {
+      const a0 = i * ZONE, a1 = (i + 1) * ZONE;
+      const [x0, y0] = polar(a0, R), [x1, y1] = polar(a1, R);
+      const out = state.left[p.id] <= 0;
+      svg += `<path d="M0 0 L${x0} ${y0} A${R} ${R} 0 0 1 ${x1} ${y1} Z" fill="${p.color}" stroke="#f4f2ea" stroke-width="4" opacity="${out ? .35 : 1}"></path>`;
+      const mid = a0 + ZONE / 2;
+      const [tx, ty] = polar(mid, R * 0.62);
+      const big = p.name.length <= 2 ? 52 : 40;
+      svg += `<g transform="translate(${tx} ${ty}) rotate(${mid > 90 && mid < 270 ? mid + 180 : mid})">
+        <text text-anchor="middle" y="10" fill="${p.text}" font-family="Black Han Sans, Noto Sans KR, sans-serif" font-size="${big}" opacity="${out ? .5 : 1}">${p.name}</text>
+        ${out ? `<text text-anchor="middle" y="44" fill="${p.text}" font-family="Noto Sans KR, sans-serif" font-weight="900" font-size="20">소진</text>`
+              : `<text text-anchor="middle" y="40" fill="${p.text}" font-family="Noto Sans KR, sans-serif" font-weight="500" font-size="15" opacity=".85">${p.id === "set" ? "수첩+리갈패드+뱃지" : p.id === "miss" ? "다음 기회에" : "1개"}</text>`}
+      </g>`;
+    });
+    // 테두리 핀 (차선 반사판 느낌)
+    for (let k = 0; k < 24; k++) {
+      const [px, py] = polar(k * 15, R + 2);
+      svg += `<circle cx="${px}" cy="${py}" r="5" fill="${k % 6 === 0 ? "#f2c230" : "#f4f2ea"}"></circle>`;
+    }
+    wheel.innerHTML = svg;
+  }
+
+  // ── 재고 패널 ──
+  const stockEl = document.getElementById("stock");
+  const totalEl = document.getElementById("totalLeft");
+  const logEl = document.getElementById("log");
+  const spinBtn = document.getElementById("spinBtn");
+  function totalLeft() { return PRIZES.reduce((s, p) => s + Math.max(0, state.left[p.id]), 0); }
+  function renderPanel() {
+    const total = totalLeft();
+    totalEl.textContent = `총 ${total}회 남음`;
+    // 표시 순서: 세트 → 패드수첩 → 뱃지 → 꽝
+    const order = ["set", "pad", "badge", "miss"].map(id => PRIZES.find(p => p.id === id));
+    stockEl.innerHTML = order.map(p => {
+      const left = state.left[p.id], init = state.init[p.id] || 0;
+      const pct = init ? Math.round(left / init * 100) : 0;
+      const prob = total ? (left / total * 100).toFixed(1) : "0.0";
+      return `<div class="stock-row ${left <= 0 ? "out" : ""}">
+        <span class="swatch" style="background:${p.color}"></span>
+        <div><div class="name">${p.name}</div><div class="desc">${p.desc}</div>
+          <div class="bar"><i style="width:${pct}%;background:${p.color}"></i></div></div>
+        <div class="num"><b>${left}</b> / ${init}<span>현재 확률 ${prob}%</span></div>
+      </div>`;
+    }).join("");
+    logEl.innerHTML = state.log.length
+      ? state.log.slice(-40).reverse().map(l => {
+          const p = PRIZES.find(x => x.id === l.id);
+          return `<li class="chip" style="background:${p.color};color:${p.text}">${l.n}. ${p.name}</li>`;
+        }).join("")
+      : `<li class="empty">아직 뽑은 결과가 없습니다.</li>`;
+    if (!spinning) {
+      spinBtn.disabled = total <= 0;
+      spinBtn.textContent = total <= 0 ? "상품 소진" : "돌리기!";
+    }
+  }
+
+  // ── 소리 ──
+  let ctx = null;
+  function audio() { if (!ctx) { try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} } return ctx; }
+  function tone(freq, dur, type = "square", vol = .05, when = 0) {
+    if (!state.sound) return; const c = audio(); if (!c) return;
+    const o = c.createOscillator(), g = c.createGain();
+    o.type = type; o.frequency.value = freq;
+    const t = c.currentTime + when;
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+    o.connect(g).connect(c.destination); o.start(t); o.stop(t + dur);
+  }
+  const tick = () => tone(1200, .03, "square", .03);
+  function fanfare() { [523, 659, 784, 1047].forEach((f, i) => tone(f, .25, "triangle", .08, i * .11)); }
+  function sad() { [392, 330, 262].forEach((f, i) => tone(f, .3, "sine", .07, i * .18)); }
+
+  // ── 추첨 ──
+  function pick() {
+    const total = totalLeft();
+    let r = Math.random() * total;
+    for (const p of PRIZES) { const n = Math.max(0, state.left[p.id]); if (r < n) return p; r -= n; }
+    return PRIZES.find(p => state.left[p.id] > 0);
+  }
+
+  let rotation = 0, spinning = false;
+  const pointer = document.getElementById("pointer");
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  function spin() {
+    if (spinning || resultOverlay.hidden === false || adminOverlay.hidden === false) return;
+    if (totalLeft() <= 0) return;
+    audio(); if (ctx && ctx.state === "suspended") ctx.resume();
+    const prize = pick();
+    const idx = PRIZES.indexOf(prize);
+    const theta = idx * ZONE + ZONE * (0.15 + Math.random() * 0.7);   // 존 안의 임의 위치 (경계 피함)
+    const cur = ((rotation % 360) + 360) % 360;
+    const delta = ((360 - theta - cur) % 360 + 360) % 360;
+    const target = rotation + 360 * (reduce ? 1 : 6) + delta;
+    const start = rotation, dur = reduce ? 900 : 5200, t0 = performance.now();
+    let lastPeg = Math.floor(start / 15);
+    spinning = true; spinBtn.disabled = true; spinBtn.textContent = "두근두근…";
+    const ease = t => 1 - Math.pow(1 - t, 4);
+    function frame(now) {
+      const t = Math.min(1, (now - t0) / dur);
+      rotation = start + (target - start) * ease(t);
+      wheel.setAttribute("transform", `rotate(${rotation})`);
+      const peg = Math.floor(rotation / 15);
+      if (peg !== lastPeg) { lastPeg = peg; tick(); pointer.classList.remove("bump"); void pointer.offsetWidth; pointer.classList.add("bump"); }
+      if (t < 1) requestAnimationFrame(frame); else finish(prize);
+    }
+    requestAnimationFrame(frame);
+  }
+
+  function finish(prize) {
+    spinning = false;
+    state.left[prize.id] = Math.max(0, state.left[prize.id] - 1);
+    state.log.push({ id: prize.id, n: state.log.length + 1, t: Date.now() });
+    save(); drawWheel(); wheel.setAttribute("transform", `rotate(${rotation})`); renderPanel();
+    showResult(prize);
+  }
+
+  // ── 결과 ──
+  const resultOverlay = document.getElementById("resultOverlay");
+  const resultCard = document.getElementById("resultCard");
+  function showResult(p) {
+    const miss = p.id === "miss";
+    resultCard.style.background = p.color;
+    resultCard.classList.toggle("dark-text", p.text !== "#fff");
+    document.getElementById("resultEyebrow").textContent = miss ? "아쉬워요!" : (p.id === "set" ? "대박! 최고 상품" : "축하합니다!");
+    document.getElementById("resultPrize").textContent = miss ? "꽝" : p.name;
+    document.getElementById("resultDetail").textContent = miss ? "참여해 주셔서 감사합니다. 다음 기회에!" : `${p.desc} 당첨! 운영 부스에서 받아 가세요`;
+    resultOverlay.hidden = false;
+    document.getElementById("resultClose").focus();
+    if (miss) sad(); else { fanfare(); confetti(p.id === "set" ? 260 : 120, p.color); }
+  }
+  function closeResult() { resultOverlay.hidden = true; spinBtn.focus(); }
+  document.getElementById("resultClose").addEventListener("click", closeResult);
+  resultOverlay.addEventListener("click", e => { if (e.target === resultOverlay) closeResult(); });
+
+  // ── 색종이 ──
+  const cv = document.getElementById("confetti"), cx = cv.getContext("2d");
+  let parts = [], raf = 0;
+  function confetti(n, main) {
+    if (reduce) return;
+    cv.width = innerWidth * devicePixelRatio; cv.height = innerHeight * devicePixelRatio;
+    const cols = [main, "#f4f2ea", "#f2c230", "#1d5fb4", "#1e7d4f", "#e0533d"];
+    for (let i = 0; i < n; i++) parts.push({
+      x: cv.width / 2 + (Math.random() - .5) * cv.width * .3, y: cv.height * .45,
+      vx: (Math.random() - .5) * 26 * devicePixelRatio, vy: (-Math.random() * 22 - 8) * devicePixelRatio,
+      w: (6 + Math.random() * 8) * devicePixelRatio, h: (10 + Math.random() * 10) * devicePixelRatio,
+      r: Math.random() * 6, vr: (Math.random() - .5) * .4, c: cols[i % cols.length], life: 0,
+    });
+    if (!raf) raf = requestAnimationFrame(step);
+  }
+  function step() {
+    cx.clearRect(0, 0, cv.width, cv.height);
+    parts.forEach(p => { p.vy += .6 * devicePixelRatio; p.vx *= .99; p.x += p.vx; p.y += p.vy; p.r += p.vr; p.life++;
+      cx.save(); cx.translate(p.x, p.y); cx.rotate(p.r); cx.fillStyle = p.c; cx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h); cx.restore(); });
+    parts = parts.filter(p => p.y < cv.height + 40 && p.life < 400);
+    raf = parts.length ? requestAnimationFrame(step) : (cx.clearRect(0, 0, cv.width, cv.height), 0);
+  }
+
+  // ── 운영 설정 ──
+  const adminOverlay = document.getElementById("adminOverlay");
+  const form = document.getElementById("adminForm");
+  const probLine = document.getElementById("probLine");
+  const resetBtn = document.getElementById("resetBtn");
+  PRIZES.forEach(p => {
+    form.insertAdjacentHTML("beforeend",
+      `<label for="init-${p.id}"><i style="background:${p.color}"></i>${p.name}</label>
+       <input type="number" min="0" step="1" id="init-${p.id}" aria-label="${p.name} 처음 수량">
+       <input type="number" min="0" step="1" id="left-${p.id}" aria-label="${p.name} 남은 수량">`);
+  });
+  function val(id) { const v = parseInt(document.getElementById(id).value, 10); return isNaN(v) || v < 0 ? 0 : v; }
+  function updateProb() {
+    const t = PRIZES.reduce((s, p) => s + val("left-" + p.id), 0);
+    probLine.innerHTML = t
+      ? "저장하면 다음 확률로 뽑습니다<br>" + PRIZES.map(p => `${p.name} ${(val("left-" + p.id) / t * 100).toFixed(1)}%`).join(" · ") + ` (총 ${t}회)`
+      : "남은 수량이 모두 0이면 뽑기를 할 수 없습니다.";
+  }
+  form.addEventListener("input", updateProb);
+  function openAdmin() {
+    if (spinning) return;
+    PRIZES.forEach(p => {
+      document.getElementById("init-" + p.id).value = state.init[p.id];
+      document.getElementById("left-" + p.id).value = state.left[p.id];
+    });
+    disarm(); updateProb(); adminOverlay.hidden = false;
+    document.getElementById("init-" + PRIZES[0].id).focus();
+  }
+  function closeAdmin() { adminOverlay.hidden = true; disarm(); }
+  document.getElementById("adminBtn").addEventListener("click", openAdmin);
+  document.getElementById("adminCancel").addEventListener("click", closeAdmin);
+  adminOverlay.addEventListener("click", e => { if (e.target === adminOverlay) closeAdmin(); });
+  document.getElementById("adminSave").addEventListener("click", () => {
+    PRIZES.forEach(p => { state.init[p.id] = val("init-" + p.id); state.left[p.id] = val("left-" + p.id); });
+    save(); drawWheel(); wheel.setAttribute("transform", `rotate(${rotation})`); renderPanel(); closeAdmin();
+  });
+  let armTimer = 0;
+  function disarm() { resetBtn.classList.remove("armed"); resetBtn.textContent = "처음 수량으로 되돌리기"; clearTimeout(armTimer); }
+  resetBtn.addEventListener("click", () => {
+    if (!resetBtn.classList.contains("armed")) {
+      resetBtn.classList.add("armed"); resetBtn.textContent = "한 번 더 누르면 기록이 지워집니다";
+      armTimer = setTimeout(disarm, 4000); return;
+    }
+    PRIZES.forEach(p => { state.init[p.id] = val("init-" + p.id); state.left[p.id] = state.init[p.id]; });
+    state.log = []; save(); drawWheel(); wheel.setAttribute("transform", `rotate(${rotation})`); renderPanel(); closeAdmin();
+  });
+
+  // ── 기타 버튼 ──
+  const soundBtn = document.getElementById("soundBtn");
+  function renderSound() { soundBtn.setAttribute("aria-pressed", String(state.sound)); soundBtn.textContent = state.sound ? "소리 켜짐" : "소리 꺼짐"; }
+  soundBtn.addEventListener("click", () => { state.sound = !state.sound; save(); renderSound(); });
+  document.getElementById("fsBtn").addEventListener("click", () => {
+    try {
+      if (document.fullscreenElement) document.exitFullscreen();
+      else document.documentElement.requestFullscreen().catch(() => {});
+    } catch (e) {}
+  });
+  spinBtn.addEventListener("click", spin);
+  document.addEventListener("keydown", e => {
+    if (e.target.tagName === "INPUT") return;
+    if (e.key === "Escape") { if (!resultOverlay.hidden) closeResult(); else if (!adminOverlay.hidden) closeAdmin(); return; }
+    if (e.code === "Space" || e.key === "Enter") {
+      if (!resultOverlay.hidden) { e.preventDefault(); closeResult(); return; }
+      if (adminOverlay.hidden && document.activeElement === document.body || document.activeElement === spinBtn) { e.preventDefault(); spin(); }
+    }
+  });
+
+  // 화면 꺼짐 방지 (지원 시)
+  try { navigator.wakeLock && navigator.wakeLock.request("screen").catch(() => {}); } catch (e) {}
+
+  drawWheel(); renderPanel(); renderSound();
+})();
+</script>
+</body>
+</html>
