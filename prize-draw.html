@@ -125,11 +125,11 @@
   }
   .stock-row.out { opacity: .45; }
   .thumbs { display: flex; align-items: center; }
-  .thumbs img { width: 46px; height: 46px; border-radius: 50%; object-fit: cover; border: 3px solid var(--c); background: #fff; display: block; }
-  .thumbs img + img { margin-left: -18px; }
+  .thumbs img { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; border: 3px solid var(--c); background: #fff; display: block; }
+  .thumbs img + img { margin-left: -16px; }
   .result .pics { display: flex; justify-content: center; gap: 14px; margin: 16px 0 4px; flex-wrap: wrap; }
-  .result .pics img { width: clamp(96px, 26vw, 150px); aspect-ratio: 1; border-radius: 50%; object-fit: cover; border: 6px solid #fff; background: #fff; box-shadow: 0 8px 20px rgba(0,0,0,.25); }
-  .result .pics.multi img { width: clamp(80px, 21vw, 120px); }
+  .result .pics img { width: clamp(76px, 20vw, 110px); aspect-ratio: 1; border-radius: 50%; object-fit: cover; border: 4px solid #fff; background: #fff; box-shadow: 0 8px 20px rgba(0,0,0,.25); }
+  .result .pics.multi img { width: clamp(64px, 16vw, 88px); }
   .stock-row .name { font-weight: 700; font-size: 1.05rem; }
   .stock-row .desc { font-size: .8rem; color: var(--muted); }
   .bar { height: 6px; background: var(--asphalt-3); border-radius: 99px; margin-top: 6px; overflow: hidden; }
@@ -326,12 +326,12 @@
           <image href="${IMG[key]}" x="${-r}" y="${-r}" width="${r * 2}" height="${r * 2}" clip-path="url(#clip${r})" preserveAspectRatio="xMidYMid slice"></image>
         </g>`;
       const pics = p.imgs.length === 1
-        ? sticker(p.imgs[0], 0, 0, 58)
-        : sticker(p.imgs[0], 0, dir * 34, 34) + sticker(p.imgs[1], -43, -dir * 28, 34) + sticker(p.imgs[2], 43, -dir * 28, 34);
-      const nameY = dir * 86 + 11;
+        ? sticker(p.imgs[0], 0, 0, 40)
+        : sticker(p.imgs[0], 0, dir * 24, 24) + sticker(p.imgs[1], -31, -dir * 20, 24) + sticker(p.imgs[2], 31, -dir * 20, 24);
+      const nameY = dir * 80 + 13;
       svg += `<g transform="translate(${tx} ${ty}) rotate(${flip ? mid + 180 : mid})" opacity="${out ? .45 : 1}">
         ${pics}
-        <text text-anchor="middle" y="${nameY}" fill="${p.text}" font-family="Black Han Sans, Noto Sans KR, sans-serif" font-size="${p.name.length <= 2 ? 34 : 28}">${p.name}</text>
+        <text text-anchor="middle" y="${nameY}" fill="${p.text}" font-family="Black Han Sans, Noto Sans KR, sans-serif" font-size="${p.name.length <= 2 ? 42 : 34}">${p.name}</text>
         ${out ? `<g transform="rotate(-20)"><rect x="-52" y="-20" width="104" height="40" rx="6" fill="#e0533d"></rect><text text-anchor="middle" y="10" fill="#fff" font-family="Black Han Sans, Noto Sans KR, sans-serif" font-size="28">소진</text></g>` : ""}
       </g>`;
     });
@@ -340,7 +340,7 @@
       const [px, py] = polar(k * 15, R + 2);
       svg += `<circle cx="${px}" cy="${py}" r="5" fill="${k % 6 === 0 ? "#f2c230" : "#f4f2ea"}"></circle>`;
     }
-    wheel.innerHTML = `<defs><clipPath id="clip58"><circle r="58"></circle></clipPath><clipPath id="clip34"><circle r="34"></circle></clipPath></defs>` + svg;
+    wheel.innerHTML = `<defs><clipPath id="clip40"><circle r="40"></circle></clipPath><clipPath id="clip24"><circle r="24"></circle></clipPath></defs>` + svg;
   }
 
   // ── 재고 패널 ──
